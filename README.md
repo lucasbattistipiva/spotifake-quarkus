@@ -1,7 +1,7 @@
 # 🎵 Spotifake — API REST com Quarkus e PostgreSQL
 
 > Trabalho M3 — Desenvolvimento de API REST  
-> Curso de Engenharia de Software — UNIVALI  
+> Curso de Ciência da Computação — UNIVALI  
 
 ---
 
@@ -384,4 +384,4 @@ spotifake-quarkus/
 
 ---
 
-> Trabalho desenvolvido para a disciplina de Desenvolvimento de Software — UNIVALI 2025
+> Trabalho desenvolvido para a disciplina de Programação Orientada a Objetos — UNIVALI 2025
