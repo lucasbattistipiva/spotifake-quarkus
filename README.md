@@ -1,267 +1,401 @@
-# 🎵 Spotifake — API REST com Quarkus e PostgreSQL
+# Spotifake — API REST com Quarkus
 
-> Trabalho M3 — Desenvolvimento de API REST  
-> Curso de Ciência da Computação — UNIVALI  
+API REST desenvolvida com Quarkus e PostgreSQL para gerenciamento de músicas, artistas, playlists e usuários.
 
----
-
-## 📋 Sobre o Projeto
-
-O **Spotifake** é uma API REST que simula as funcionalidades básicas de uma plataforma de streaming de músicas, inspirada no Spotify. Desenvolvida com o framework **Quarkus** e persistência em **PostgreSQL**, a aplicação implementa operações CRUD completas para as quatro entidades do sistema.
-
-Este projeto dá continuidade ao Trabalho M1 (modelagem UML) e M2 (console Java com JDBC), agora evoluindo para uma API REST com arquitetura em camadas.
-
----
-
-## 🏗️ Arquitetura
-
-A aplicação segue uma arquitetura em camadas, com separação clara de responsabilidades:
-
-```
-src/main/java/br/com/spotifake/
-├── model/          → Entidades JPA mapeadas para o banco de dados
-├── dto/            → Objetos de transferência de dados (Request e Response)
-├── repository/     → Acesso ao banco via EntityManager (JPA)
-├── service/        → Regras de negócio e conversão DTO ↔ entidade
-└── resource/       → Endpoints REST (JAX-RS / controllers)
-```
-
-### Fluxo de uma requisição
-
-```
-Cliente (Postman)
-      │
-      ▼
-  Resource         ← recebe a requisição HTTP, valida com @Valid
-      │
-      ▼
-  Service          ← aplica regras de negócio, converte DTO → entidade
-      │
-      ▼
-  Repository       ← executa queries via EntityManager
-      │
-      ▼
-  PostgreSQL       ← persiste os dados
-      │
-      ▼
-  Service          ← converte entidade → DTO de resposta
-      │
-      ▼
-  Resource         ← devolve Response com status HTTP correto
-```
-
----
-
-## 🗂️ Entidades e Relacionamentos
-
-```
-Artista  ──< Musica
-                │
-               >─< Playlist >── Usuario
-```
-
-| Entidade | Relacionamento |
-|----------|----------------|
-| `Artista` | Um artista possui muitas músicas (1:N) |
-| `Musica` | Pertence a um artista; pode estar em várias playlists (N:N) |
-| `Usuario` | Possui muitas playlists (1:N) |
-| `Playlist` | Pertence a um usuário; contém muitas músicas (N:N) |
-
----
-
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias
 
 | Tecnologia | Versão | Uso |
 |---|---|---|
-| Java | 17+ | Linguagem principal |
-| Quarkus | 3.9.4 | Framework REST |
-| JAX-RS | — | Definição dos endpoints HTTP |
-| JPA / Hibernate | — | ORM — mapeamento objeto-relacional |
-| CDI | — | Injeção de dependência (`@Inject`) |
-| Bean Validation | — | Validação de campos (`@NotBlank`, `@Email`...) |
-| PostgreSQL | 14+ | Banco de dados relacional |
-| Maven | 3.8+ | Gerenciador de dependências e build |
+| Quarkus | 3.9.4 | Framework principal |
+| JAX-RS | — | Endpoints REST |
+| JPA / Hibernate ORM | — | Mapeamento objeto-relacional |
+| CDI (Quarkus ARC) | — | Injeção de dependência |
+| Hibernate Validator | — | Validação de campos |
+| PostgreSQL | — | Banco de dados |
+| Java | 17+ | Linguagem |
 
 ---
 
-## ⚙️ Como Executar
+## Arquitetura
+
+```
+src/main/java/br/com/spotifake/
+├── model/       → Entidades JPA (mapeadas para as tabelas do banco)
+├── dto/         → Objetos de transferência (Request e Response)
+├── repository/  → Acesso ao banco via EntityManager
+├── service/     → Regras de negócio e conversão DTO ↔ entidade
+└── resource/    → Endpoints REST (JAX-RS)
+```
+
+---
+
+## Configuração e execução
 
 ### Pré-requisitos
 
-- Java 17 ou superior
-- Maven 3.8 ou superior
-- PostgreSQL rodando localmente
+- Java 17+
+- Maven 3.8+
+- PostgreSQL rodando na porta 5432
 
-### 1. Clone o repositório
+### 1. Criar o banco de dados
 
-```bash
-git clone https://github.com/lucasbattistipiva/spotifake-quarkus.git
-cd spotifake-quarkus
+```sql
+CREATE DATABASE spotifake;
 ```
 
-### 2. Crie o banco de dados
+### 2. Executar o script SQL
 
 ```bash
-psql -U postgres -c "CREATE DATABASE spotifake;"
 psql -U postgres -d spotifake -f schema.sql
 ```
 
-Ou abra o `schema.sql` no pgAdmin e execute manualmente.
+O `schema.sql` cria todas as tabelas e insere dados de exemplo.
 
-### 3. Configure as credenciais
+### 3. Configurar credenciais (se necessário)
 
 Edite `src/main/resources/application.properties`:
 
 ```properties
 quarkus.datasource.username=postgres
-quarkus.datasource.password=sua_senha
+quarkus.datasource.password=
 quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/spotifake
 ```
 
-### 4. Compile e execute
+### 4. Executar a aplicação
 
 ```bash
-mvn clean package -DskipTests
-java -jar target/quarkus-app/quarkus-run.jar
+./mvnw quarkus:dev
 ```
 
-A API estará disponível em: **`http://localhost:8080`**
+A API estará disponível em `http://localhost:8080`.
 
 ---
 
-## 📌 Endpoints da API
+## Entidades e relacionamentos
 
-### 🎤 Artistas — `/artistas`
+```
+Artista (1) ──── (N) Musica
+Usuario (1) ──── (N) Playlist
+Playlist (N) ──── (N) Musica   [tabela associativa: playlist_musica]
+```
 
-| Método | Endpoint | Descrição | Status |
-|--------|----------|-----------|--------|
-| `POST` | `/artistas` | Cria um novo artista | 201 |
-| `GET` | `/artistas` | Lista todos os artistas | 200 |
-| `GET` | `/artistas/{id}` | Busca artista por ID | 200 / 404 |
-| `PUT` | `/artistas/{id}` | Atualiza um artista | 200 / 404 |
-| `DELETE` | `/artistas/{id}` | Remove um artista | 204 / 404 |
+---
 
-**POST /artistas — Requisição:**
+## Endpoints — Artista
+
+### `POST /artistas` — Criar artista
+
+**Corpo da requisição:**
 ```json
 {
-  "nome": "Coldplay",
+  "nome": "The Beatles",
   "paisOrigem": "Reino Unido",
-  "anoInicio": 1996
+  "anoInicio": 1960
 }
 ```
+
 **Resposta `201 Created`:**
 ```json
 {
-  "id": 4,
-  "nome": "Coldplay",
+  "id": 1,
+  "nome": "The Beatles",
   "paisOrigem": "Reino Unido",
-  "anoInicio": 1996,
+  "anoInicio": 1960,
   "totalMusicas": 0
 }
 ```
 
+**Validações:** `nome` é obrigatório.
+
 ---
 
-### 🎵 Músicas — `/musicas`
+### `GET /artistas` — Listar todos os artistas
 
-| Método | Endpoint | Descrição | Status |
-|--------|----------|-----------|--------|
-| `POST` | `/musicas` | Cria uma nova música | 201 |
-| `GET` | `/musicas` | Lista todas as músicas | 200 |
-| `GET` | `/musicas/{id}` | Busca música por ID | 200 / 404 |
-| `GET` | `/musicas/artista/{artistaId}` | Lista músicas de um artista | 200 / 404 |
-| `PUT` | `/musicas/{id}` | Atualiza uma música | 200 / 404 |
-| `DELETE` | `/musicas/{id}` | Remove uma música | 204 / 404 |
+**Resposta `200 OK`:**
+```json
+[
+  {
+    "id": 1,
+    "nome": "Daft Punk",
+    "paisOrigem": "França",
+    "anoInicio": 1993,
+    "totalMusicas": 2
+  },
+  {
+    "id": 2,
+    "nome": "Legião Urbana",
+    "paisOrigem": "Brasil",
+    "anoInicio": 1982,
+    "totalMusicas": 2
+  }
+]
+```
 
-**POST /musicas — Requisição:**
+---
+
+### `GET /artistas/{id}` — Buscar artista por ID
+
+**Resposta `200 OK`:**
 ```json
 {
-  "titulo": "Yellow",
-  "duracaoSegundos": 269,
-  "genero": "Pop Rock",
-  "anoLancamento": 2000,
+  "id": 1,
+  "nome": "The Beatles",
+  "paisOrigem": "Reino Unido",
+  "anoInicio": 1960,
+  "totalMusicas": 2
+}
+```
+
+**Resposta `404 Not Found`:**
+```json
+{
+  "title": "Artista com ID 99 não encontrado"
+}
+```
+
+---
+
+### `PUT /artistas/{id}` — Atualizar artista
+
+**Corpo da requisição:**
+```json
+{
+  "nome": "The Beatles",
+  "paisOrigem": "Reino Unido",
+  "anoInicio": 1960
+}
+```
+
+**Resposta `200 OK`:** objeto atualizado (mesmo formato do GET).
+
+---
+
+### `DELETE /artistas/{id}` — Remover artista
+
+**Resposta `204 No Content`** (sem corpo)
+
+**Resposta `404 Not Found`** se o ID não existir.
+
+---
+
+## Endpoints — Música
+
+### `POST /musicas` — Criar música
+
+**Corpo da requisição:**
+```json
+{
+  "titulo": "Hey Jude",
+  "duracaoSegundos": 431,
+  "genero": "Rock",
+  "anoLancamento": 1968,
   "artistaId": 1
 }
 ```
+
 **Resposta `201 Created`:**
 ```json
 {
-  "id": 7,
-  "titulo": "Yellow",
-  "duracaoSegundos": 269,
-  "duracaoFormatada": "4:29",
-  "genero": "Pop Rock",
-  "anoLancamento": 2000,
+  "id": 1,
+  "titulo": "Hey Jude",
+  "duracaoSegundos": 431,
+  "duracaoFormatada": "7:11",
+  "genero": "Rock",
+  "anoLancamento": 1968,
   "artistaId": 1,
   "artistaNome": "The Beatles"
 }
 ```
 
+**Validações:** `titulo`, `duracaoSegundos` (mínimo 1) e `artistaId` são obrigatórios.
+
 ---
 
-### 👤 Usuários — `/usuarios`
+### `GET /musicas` — Listar todas as músicas
 
-| Método | Endpoint | Descrição | Status |
-|--------|----------|-----------|--------|
-| `POST` | `/usuarios` | Cria um novo usuário | 201 |
-| `GET` | `/usuarios` | Lista todos os usuários | 200 |
-| `GET` | `/usuarios/{id}` | Busca usuário por ID | 200 / 404 |
-| `PUT` | `/usuarios/{id}` | Atualiza um usuário | 200 / 404 |
-| `DELETE` | `/usuarios/{id}` | Remove um usuário | 204 / 404 |
+**Resposta `200 OK`:**
+```json
+[
+  {
+    "id": 1,
+    "titulo": "Get Lucky",
+    "duracaoSegundos": 248,
+    "duracaoFormatada": "4:08",
+    "genero": "Electronic",
+    "anoLancamento": 2013,
+    "artistaId": 3,
+    "artistaNome": "Daft Punk"
+  },
+  {
+    "id": 2,
+    "titulo": "Hey Jude",
+    "duracaoSegundos": 431,
+    "duracaoFormatada": "7:11",
+    "genero": "Rock",
+    "anoLancamento": 1968,
+    "artistaId": 1,
+    "artistaNome": "The Beatles"
+  }
+]
+```
 
-**POST /usuarios — Requisição:**
+---
+
+### `GET /musicas/{id}` — Buscar música por ID
+
+**Resposta `200 OK`:** objeto da música (mesmo formato acima).
+
+**Resposta `404 Not Found`:**
 ```json
 {
-  "nome": "João Pedro",
-  "email": "joao@email.com",
-  "senha": "senha123",
-  "plano": "FREE"
+  "title": "Música com ID 99 não encontrada"
 }
 ```
+
+---
+
+### `GET /musicas/artista/{artistaId}` — Listar músicas de um artista
+
+**Resposta `200 OK`:** lista de músicas do artista especificado.
+
+**Resposta `404 Not Found`** se o artista não existir.
+
+---
+
+### `PUT /musicas/{id}` — Atualizar música
+
+**Corpo da requisição:** mesmo formato do POST.
+
+**Resposta `200 OK`:** objeto atualizado.
+
+---
+
+### `DELETE /musicas/{id}` — Remover música
+
+**Resposta `204 No Content`** (sem corpo)
+
+---
+
+## Endpoints — Usuário
+
+### `POST /usuarios` — Criar usuário
+
+**Corpo da requisição:**
+```json
+{
+  "nome": "Lucas Silva",
+  "email": "lucas@email.com",
+  "senha": "senha123",
+  "plano": "premium"
+}
+```
+
 **Resposta `201 Created`:**
 ```json
 {
-  "id": 3,
-  "nome": "João Pedro",
-  "email": "joao@email.com",
-  "plano": "FREE",
+  "id": 1,
+  "nome": "Lucas Silva",
+  "email": "lucas@email.com",
+  "plano": "PREMIUM",
   "totalPlaylists": 0
 }
 ```
 
-> ⚠️ A senha **nunca** é retornada nas respostas da API.
+**Validações:** `nome`, `email` (formato válido) e `senha` (mínimo 6 caracteres) são obrigatórios. E-mail deve ser único no sistema. O campo `plano` é convertido automaticamente para maiúsculas; padrão `FREE`.
+
+**Resposta `400 Bad Request`** se o e-mail já estiver em uso:
+```json
+{
+  "title": "Já existe um usuário com o e-mail: lucas@email.com"
+}
+```
 
 ---
 
-### 📂 Playlists — `/playlists`
+### `GET /usuarios` — Listar todos os usuários
 
-| Método | Endpoint | Descrição | Status |
-|--------|----------|-----------|--------|
-| `POST` | `/playlists` | Cria uma nova playlist | 201 |
-| `GET` | `/playlists` | Lista todas as playlists | 200 |
-| `GET` | `/playlists/{id}` | Busca playlist por ID | 200 / 404 |
-| `GET` | `/playlists/usuario/{usuarioId}` | Playlists de um usuário | 200 / 404 |
-| `PUT` | `/playlists/{id}` | Atualiza uma playlist completa | 200 / 404 |
-| `DELETE` | `/playlists/{id}` | Remove uma playlist | 204 / 404 |
-| `PATCH` | `/playlists/{id}/musicas/adicionar` | Adiciona músicas à playlist | 200 / 404 |
-| `PATCH` | `/playlists/{id}/musicas/remover` | Remove músicas da playlist | 200 / 404 |
+**Resposta `200 OK`:**
+```json
+[
+  {
+    "id": 1,
+    "nome": "Lucas Silva",
+    "email": "lucas@email.com",
+    "plano": "PREMIUM",
+    "totalPlaylists": 2
+  },
+  {
+    "id": 2,
+    "nome": "Maria Souza",
+    "email": "maria@email.com",
+    "plano": "FREE",
+    "totalPlaylists": 1
+  }
+]
+```
 
-**POST /playlists — Requisição:**
+---
+
+### `GET /usuarios/{id}` — Buscar usuário por ID
+
+**Resposta `200 OK`:** objeto do usuário (mesmo formato acima).
+
+**Resposta `404 Not Found`:**
 ```json
 {
-  "nome": "Minha Playlist",
-  "descricao": "Músicas favoritas",
-  "publica": true,
-  "usuarioId": 1,
-  "musicaIds": [1, 3, 5]
+  "title": "Usuário com ID 99 não encontrado"
 }
 ```
+
+---
+
+### `PUT /usuarios/{id}` — Atualizar usuário
+
+**Corpo da requisição:**
+```json
+{
+  "nome": "Lucas Silva",
+  "email": "lucas.novo@email.com",
+  "senha": "novaSenha123",
+  "plano": "free"
+}
+```
+
+**Resposta `200 OK`:** objeto atualizado.
+
+**Resposta `400 Bad Request`** se o novo e-mail já pertencer a outro usuário.
+
+---
+
+### `DELETE /usuarios/{id}` — Remover usuário
+
+**Resposta `204 No Content`** (sem corpo)
+
+---
+
+## Endpoints — Playlist
+
+### `POST /playlists` — Criar playlist
+
+**Corpo da requisição:**
+```json
+{
+  "nome": "Clássicos do Rock",
+  "descricao": "As melhores músicas do rock de todos os tempos",
+  "publica": true,
+  "usuarioId": 1,
+  "musicaIds": [1, 2, 3]
+}
+```
+
+O campo `musicaIds` é opcional — a playlist pode ser criada sem músicas.
+
 **Resposta `201 Created`:**
 ```json
 {
-  "id": 3,
-  "nome": "Minha Playlist",
-  "descricao": "Músicas favoritas",
+  "id": 1,
+  "nome": "Clássicos do Rock",
+  "descricao": "As melhores músicas do rock de todos os tempos",
   "publica": true,
   "usuarioId": 1,
   "usuarioNome": "Lucas Silva",
@@ -270,118 +404,116 @@ A API estará disponível em: **`http://localhost:8080`**
     {
       "id": 1,
       "titulo": "Hey Jude",
+      "duracaoSegundos": 431,
       "duracaoFormatada": "7:11",
+      "genero": "Rock",
+      "anoLancamento": 1968,
+      "artistaId": 1,
       "artistaNome": "The Beatles"
+    },
+    {
+      "id": 2,
+      "titulo": "Let It Be",
+      "duracaoSegundos": 243,
+      "duracaoFormatada": "4:03",
+      "genero": "Rock",
+      "anoLancamento": 1970,
+      "artistaId": 1,
+      "artistaNome": "The Beatles"
+    },
+    {
+      "id": 3,
+      "titulo": "Que País É Este",
+      "duracaoSegundos": 225,
+      "duracaoFormatada": "3:45",
+      "genero": "Rock Nacional",
+      "anoLancamento": 1987,
+      "artistaId": 2,
+      "artistaNome": "Legião Urbana"
     }
   ]
 }
 ```
 
-**PATCH /playlists/1/musicas/adicionar — Requisição:**
+**Validações:** `nome` e `usuarioId` são obrigatórios. Todos os IDs de músicas informados devem existir.
+
+---
+
+### `GET /playlists` — Listar todas as playlists
+
+**Resposta `200 OK`:** lista de playlists (mesmo formato de resposta do POST, com músicas aninhadas).
+
+---
+
+### `GET /playlists/{id}` — Buscar playlist por ID
+
+**Resposta `200 OK`:** objeto da playlist com todas as músicas.
+
+**Resposta `404 Not Found`:**
 ```json
 {
-  "musicaIds": [2, 4]
+  "title": "Playlist com ID 99 não encontrada"
 }
 ```
 
-**Resposta `200 OK`** — retorna a playlist atualizada com as novas músicas incluídas.
+---
+
+### `GET /playlists/usuario/{usuarioId}` — Listar playlists de um usuário
+
+**Resposta `200 OK`:** lista de playlists do usuário especificado.
+
+**Resposta `404 Not Found`** se o usuário não existir.
 
 ---
 
-## 🗄️ Script SQL
+### `PUT /playlists/{id}` — Atualizar playlist
 
-```sql
-CREATE TABLE artista (
-    id          BIGSERIAL    PRIMARY KEY,
-    nome        VARCHAR(200) NOT NULL,
-    pais_origem VARCHAR(100),
-    ano_inicio  INTEGER
-);
-
-CREATE TABLE usuario (
-    id    BIGSERIAL    PRIMARY KEY,
-    nome  VARCHAR(200) NOT NULL,
-    email VARCHAR(200) NOT NULL UNIQUE,
-    senha VARCHAR(200) NOT NULL,
-    plano VARCHAR(50)  DEFAULT 'FREE'
-);
-
-CREATE TABLE musica (
-    id               BIGSERIAL    PRIMARY KEY,
-    titulo           VARCHAR(200) NOT NULL,
-    duracao_segundos INTEGER      NOT NULL CHECK (duracao_segundos > 0),
-    genero           VARCHAR(100),
-    ano_lancamento   INTEGER,
-    artista_id       BIGINT       NOT NULL REFERENCES artista(id) ON DELETE CASCADE
-);
-
-CREATE TABLE playlist (
-    id         BIGSERIAL    PRIMARY KEY,
-    nome       VARCHAR(200) NOT NULL,
-    descricao  VARCHAR(500),
-    publica    BOOLEAN      DEFAULT TRUE,
-    usuario_id BIGINT       NOT NULL REFERENCES usuario(id) ON DELETE CASCADE
-);
-
-CREATE TABLE playlist_musica (
-    playlist_id BIGINT NOT NULL REFERENCES playlist(id) ON DELETE CASCADE,
-    musica_id   BIGINT NOT NULL REFERENCES musica(id)   ON DELETE CASCADE,
-    PRIMARY KEY (playlist_id, musica_id)
-);
+**Corpo da requisição:**
+```json
+{
+  "nome": "Clássicos do Rock — Atualizada",
+  "descricao": "Versão atualizada da playlist",
+  "publica": false,
+  "usuarioId": 1,
+  "musicaIds": [1, 2]
+}
 ```
 
----
+A lista `musicaIds` substitui completamente as músicas anteriores da playlist.
 
-## 📁 Estrutura de Arquivos
-
-```
-spotifake-quarkus/
-├── src/
-│   └── main/
-│       ├── java/br/com/spotifake/
-│       │   ├── model/
-│       │   │   ├── Artista.java
-│       │   │   ├── Musica.java
-│       │   │   ├── Playlist.java
-│       │   │   └── Usuario.java
-│       │   ├── dto/
-│       │   │   ├── ArtistaRequestDTO.java / ArtistaResponseDTO.java
-│       │   │   ├── MusicaRequestDTO.java / MusicaResponseDTO.java
-│       │   │   ├── PlaylistRequestDTO.java / PlaylistResponseDTO.java
-│       │   │   ├── PlaylistMusicaRequestDTO.java
-│       │   │   └── UsuarioRequestDTO.java / UsuarioResponseDTO.java
-│       │   ├── repository/
-│       │   │   ├── ArtistaRepository.java
-│       │   │   ├── MusicaRepository.java
-│       │   │   ├── PlaylistRepository.java
-│       │   │   └── UsuarioRepository.java
-│       │   ├── service/
-│       │   │   ├── ArtistaService.java
-│       │   │   ├── MusicaService.java
-│       │   │   ├── PlaylistService.java
-│       │   │   └── UsuarioService.java
-│       │   └── resource/
-│       │       ├── ArtistaResource.java
-│       │       ├── MusicaResource.java
-│       │       ├── PlaylistResource.java
-│       │       └── UsuarioResource.java
-│       └── resources/
-│           └── application.properties
-├── schema.sql
-├── pom.xml
-└── README.md
-```
+**Resposta `200 OK`:** objeto atualizado.
 
 ---
 
-## 👥 Integrantes do Grupo
+### `DELETE /playlists/{id}` — Remover playlist
 
-|        Nome         |
-|---------------------|
-| Lucas Battisti Piva |
-|     Arthur Reis     | 
-|   Camile Dalmolin   |
+**Resposta `204 No Content`** (sem corpo)
 
 ---
 
-> Trabalho desenvolvido para a disciplina de Programação Orientada a Objetos — UNIVALI 2025
+## Resumo dos endpoints
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| POST | `/artistas` | Criar artista |
+| GET | `/artistas` | Listar todos os artistas |
+| GET | `/artistas/{id}` | Buscar artista por ID |
+| PUT | `/artistas/{id}` | Atualizar artista |
+| DELETE | `/artistas/{id}` | Remover artista |
+| POST | `/musicas` | Criar música |
+| GET | `/musicas` | Listar todas as músicas |
+| GET | `/musicas/{id}` | Buscar música por ID |
+| GET | `/musicas/artista/{artistaId}` | Listar músicas de um artista |
+| PUT | `/musicas/{id}` | Atualizar música |
+| DELETE | `/musicas/{id}` | Remover música |
+| POST | `/usuarios` | Criar usuário |
+| GET | `/usuarios` | Listar todos os usuários |
+| GET | `/usuarios/{id}` | Buscar usuário por ID |
+| PUT | `/usuarios/{id}` | Atualizar usuário |
+| DELETE | `/usuarios/{id}` | Remover usuário |
+| POST | `/playlists` | Criar playlist |
+| GET | `/playlists` | Listar todas as playlists |
+| GET | `/playlists/{id}` | Buscar playlist por ID |
+| GET | `/playlists/usuario/{usuarioId}` | Listar playlists de um usuário |
+| PUT | `/playlists/{id}` | Atualizar playlist |
+| DELETE | `/playlists/{id}` | Remover playlist |
